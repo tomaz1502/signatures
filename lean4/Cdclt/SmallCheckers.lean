@@ -1,10 +1,11 @@
 import Cdclt.Term
-import Cdclt.TermEval
 import Cdclt.Boolean
 
 open proof
 open term
 open rules
+
+namespace sc
 
 def Interpretation: Type := Nat → Bool
 
@@ -24,6 +25,7 @@ instance : Seq Option where
   | _,    _     => true
 
 #check Option.map
+#check Functor
 
 @[simp] def interpTerm (f : Interpretation) : term → Option Bool
   | term.const   i  _  => some $ f i
@@ -33,23 +35,47 @@ instance : Seq Option where
   | term.implies t₁ t₂ => (λ x y => bimplies x y) <$> (interpTerm f t₁) <*> (interpTerm f t₂)
   | term.xor     t₁ t₂ => (λ x y => x ≠ y)        <$> (interpTerm f t₁) <*> (interpTerm f t₂)
   | term.eq      t₁ t₂ => (λ x y => x = y)        <$> (interpTerm f t₁) <*> (interpTerm f t₂)
+  | term.bot           => some false
+  | term.top           => some true
   | _ => none
-
-#check interpTerm
 
 #eval interpTerm allOnes (term.xor (const 2 boolSort) (const 1 boolSort)) -- some false
 
 def propHolds (t : term) : Prop :=
   ∃ (f : Interpretation), interpTerm f t = some true
 
-def followsFrom (t₁ t₂ : term) :=
+def followsFrom (t₁ t₂ : term) : Prop :=
   ∀ {f : Interpretation}, interpTerm f t₁ = some true → interpTerm f t₂ = some true
 
-theorem followsImpliesPropHolds: ∀ {t₁ t₂: term},
-  followsFrom t₁ t₂ → propHolds t₁ → propHolds t₂
+@[simp] def allTrue (f : Interpretation) (ts : List term) : Prop :=
+  match ts with
+  | [] => true
+  | (t :: ts') => interpTerm f t = some true /\ allTrue f ts'
+
+def followsFrom' (ts : List term) (t : term) : Prop :=
+  ∀ {f : Interpretation}, allTrue f ts → interpTerm f t = some true
+
+theorem followsImpliesPropHolds: ∀ {t₁ t₂: term}, followsFrom t₁ t₂ → propHolds t₁ → propHolds t₂
   | t₁, t₂, h₁, ⟨ f, h₂ ⟩ =>
     ⟨ f, h₁ h₂ ⟩
 
+theorem notImplies1'' : ∀ {t₁ t₂ : term},
+  followsFrom' [not $ implies t₁ t₂] t₁
+  | t₁, t₂, f, h =>
+    match r₁: interpTerm f t₁, r₂: interpTerm f t₂ with
+    | none,       _      => by simp at h
+                               rewrite [r₁] at h
+                               assumption
+    | some false, none   => by simp at h
+                               rewrite [r₁, r₂] at h
+                               simp at h
+    | some false, some _ => by simp at h
+                               rewrite [r₁, r₂] at h
+                               assumption
+    | some true,  _      => rfl
+
+-- not (t1 -> t2) -> t1
+-- not (t1 -> t2) -> not t2
 theorem notImplies1' : ∀ {t₁ t₂ : term},
   followsFrom (not $ implies t₁ t₂) t₁
   | t₁, t₂, f, h =>
@@ -63,11 +89,9 @@ theorem notImplies1' : ∀ {t₁ t₂ : term},
     | some false, some _ => by simp at h
                                rewrite [r₁, r₂] at h
                                assumption
-
     | some true,  _      => rfl
 
-theorem notImplies1 : ∀ {t₁ t₂: term},
-  propHolds (not $ implies t₁ t₂) → propHolds t₁
+theorem notImplies1 : ∀ {t₁ t₂: term}, propHolds (not $ implies t₁ t₂) → propHolds t₁
   | t₁, t₂, h => followsImpliesPropHolds notImplies1' h
 
 theorem interpNotNone: ∀ {f: Interpretation} {t: term},
@@ -135,10 +159,7 @@ theorem impliesElim' : ∀ {t₁ t₂: term},
     | some false, none       => by simp at *
                                    rewrite [r₁, r₂] at h
                                    simp at h
-    | some false, some false => by simp
-                                   rewrite [r₁, r₂]
-                                   exact rfl
-    | some false, some true  => by simp
+    | some false, some _     => by simp
                                    rewrite [r₁, r₂]
                                    exact rfl
     | some true, none        => by simp at *
@@ -155,56 +176,59 @@ theorem impliesElim : ∀ {t₁ t₂: term},
   propHolds (implies t₁ t₂) → propHolds (or (not t₁) t₂)
   | t₁, t₂, h => followsImpliesPropHolds impliesElim' h
 
+def absurd: Prop := propHolds bot
 
--- theorem notImplies2' : ∀ {t₁ t₂ : term},
---   propHolds (not $ implies t₁ t₂) → propHolds (not t₂)
---     | t₁, t₂, ⟨ f, h ⟩ =>
---       have p: interpTerm f t₁ = true :=
---         -- by apply contradict
---       ⟨ f, p ⟩
-     
+theorem contradiction': ∀ {t: term},
+  followsFrom (and (not t) t) bot
+  | t, f, h => by simp at h
+                  cases r: interpTerm f t with
+                  | none     => rewrite [r] at h
+                                simp at h
+                  | some val => cases r': val with
+                                | true  => rewrite [r'] at r
+                                           rewrite [r] at h
+                                           simp at h
+                                | false => rewrite [r'] at r
+                                           rewrite [r] at h
+                                           simp at h
 
-/-\ axiom modusPonens : ∀ {t₁ t₂ : term}, \ -/
-/-\   thHolds t₁ → thHolds (implies t₁ t₂) → thHolds t₂ \ -/
+theorem contradiction: ∀ {t: term},
+  propHolds (and (not t) t) → absurd
+  | t, h => followsImpliesPropHolds contradiction' h
 
-/-\ theorem evalImplies : termEval (implies t₁ t₂) = implies (termEval t₁) (termEval t₂) := sorry \ -/
+theorem R1' : ∀ {a b : term},
+  followsFrom (and (or (not a) b) a) b
+  | a, b, f, h =>
+    match r₁: interpTerm f a, r₂: interpTerm f b with
+    | _,          some true  => rfl
+    | none,       some false => by simp at h
+                                   rewrite [r₁, r₂] at h
+                                   simp at h
+    | some true,  some false => by simp at h
+                                   rewrite [r₁, r₂] at h
+                                   simp at h
+    | some false, some false => by simp at h
+                                   rewrite [r₁, r₂] at h
+                                   simp at h
+    | none,       none       => by simp at h
+                                   rewrite [r₁, r₂] at h
+                                   simp at h
+    | some _,     none       => by simp at h
+                                   rewrite [r₁, r₂] at h
+                                   simp at h
+                                   exact h
 
-/-\ theorem termEvalGo : termEval (go f t) = interpTerm f t := sorry \ -/
+theorem R1 : ∀ {a b : term},
+  propHolds (and (or (not a) b) a) → propHolds b
+  | a, b, h => followsImpliesPropHolds R1' h
 
-/-\ theorem modusPonens' : ∀  (f : Interpretation) (t₁ t₂ : term), \ -/
-/-\   interpTerm f t₁ = top → interpTerm f (implies t₁ t₂) = top → interpTerm f t₂ = top := \ -/
-/-\     by intros h₁ h₂ \ -/
-/-\        simp at h₂ \ -/
-/-\        rewrite [evalImplies] at h₂ \ -/
-/-\        rewrite [termEvalGo] at h₂ \ -/
-
-    /-\ match interpTerm f t₂ with \ -/
-    /-\ | top => by intros \ -/
-    /-\             exact rfl \ -/
-    /-\ | t₂'  => by intros h₁ h₂ \ -/
-    /-\              simp at h₂ \ -/
-
--- import Cdclt.Term
--- import Cdclt.Euf
--- import Cdclt.Array
--- import Cdclt.BV
--- import Cdclt.Quant
--- set_option maxRecDepth 10000
--- set_option maxHeartbeats 500000
-
--- open proof
--- open proof.sort proof.term
--- open rules eufRules arrayRules bvRules quantRules
-
+#check term.top = term.bot
 
 
- -- ? acho que nao funciona pq as interpretacoes de t₁ e (implies t₁ t₂) podem ser diferentes
-/-\ theorem modusPonens' : ∀ (t₁ t₂ : term), \ -/
-/-\   propHolds t₁ → propHolds (implies t₁ t₂) → propHolds t₂ \ -/
+/-\ theorem andIntro : ∀ {a b : term}, \ -/
+/-\   propHolds a → propHolds b → propHolds (and a b) \ -/
+/-\   | a, b, ⟨f₁, p₁⟩, ⟨f₂, p₂⟩ => by \ -/ 
 
-/-\  -- acho que resolve o problema do de cima \ -/
-/-\ theorem modusPonens' : ∀ (t₁ t₂ : term), \ -/
-/-\   propHolds (and t₁ (implies t₁ t₂)) → propHolds t₂ \ -/
 def p := const 1000 boolSort
 def q := const 1001 boolSort
 def let1 := (implies p q)
@@ -212,16 +236,29 @@ def let2 := (implies let1 q)
 def let3 := (term.not (implies p let2))
 def let4 := (term.not let2)
 
-theorem th0 : thHolds let3 -> holds [] :=
-fun lean_a0 : thHolds let3 =>
-have lean_s0 : thHolds let4 := notImplies2 lean_a0
-have lean_s1 : thHolds let1 := notImplies1 lean_s0
-have lean_s2 : thHolds (term.or (term.not p) q) := impliesElim lean_s1
-let lean_s3 := clOr lean_s2
-have lean_s4 : thHolds p := notImplies1 lean_a0
-let lean_s5 := clAssume lean_s4
-have lean_s6 : holds ([q]) := R1 lean_s3 lean_s5 p
-let lean_s7 := thAssume lean_s6
-have lean_s8 : thHolds let4 := notImplies2 lean_a0
-have lean_s9 : thHolds (term.not q) := notImplies2 lean_s8
-show holds [] from contradiction lean_s7 lean_s9
+theorem th0' : followsFrom' [let3] bot := sorry
+
+theorem th0 : propHolds let3 → absurd :=
+  fun lean_a0 : propHolds let3 =>
+    have lean_s0 : propHolds let4 := notImplies2 lean_a0
+    have lean_s1 : propHolds let1 := notImplies1 lean_s0
+    have lean_s2 : propHolds (or (not p) q) := impliesElim lean_s1
+    have lean_s4 : propHolds p := notImplies1 lean_a0
+    /-\ have lean_s6 : propHolds q := R1 lean_s2 lean_s4 \ -/
+    sorry
+
+/-\ theorem th0 : thHolds let3 -> holds [] := \ -/
+/-\ fun lean_a0 : thHolds let3 => \ -/
+/-\ have lean_s0 : thHolds let4 := notImplies2 lean_a0 \ -/
+/-\ have lean_s1 : thHolds let1 := notImplies1 lean_s0 \ -/
+/-\ have lean_s2 : thHolds (term.or (term.not p) q) := impliesElim lean_s1 \ -/
+/-\ let lean_s3 := clOr lean_s2 \ -/
+/-\ have lean_s4 : thHolds p := notImplies1 lean_a0 \ -/
+/-\ let lean_s5 := clAssume lean_s4 \ -/
+/-\ have lean_s6 : holds ([q]) := R1 lean_s3 lean_s5 p \ -/
+/-\ let lean_s7 := thAssume lean_s6 \ -/
+/-\ have lean_s8 : thHolds let4 := notImplies2 lean_a0 \ -/
+/-\ have lean_s9 : thHolds (term.not q) := notImplies2 lean_s8 \ -/
+/-\ show holds [] from contradiction lean_s7 lean_s9 \ -/
+
+
