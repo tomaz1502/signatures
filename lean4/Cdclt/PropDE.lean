@@ -145,8 +145,6 @@ theorem followsBot : ∀ {t : term},
                by simp at h'
     | false => rfl
 
-
-
 theorem zz: ∀ {f: Interpretation}, interpTerm f notMpDE = false := followsBot th0'
 theorem ww: ∀ {f: Interpretation}, interpTerm f mpDE' = true := interpNotTerm zz
 
@@ -155,3 +153,25 @@ def curryModusPonens (x y: Bool) : Bool := bimplies x (bimplies (bimplies x y) y
 
 theorem goal: ∀ {x y: Bool}, curryModusPonens x y = true
   | x, y => @ww λ n => if n == 1000 then x else y
+
+
+variable {b₁ b₂: Bool}
+
+@[simp] def is_equiv (l l₁ l₂: term) := l = xor l₁ l₂
+
+theorem notBneIsEq: ∀ {a b : Bool}, ((a != b) = false) → a = b
+  | true, true, _ => rfl
+  | false, false, _ => rfl
+  | true, false, h => by simp at h
+  | false, true, h => by simp at h
+
+theorem eqOfInterps: ∀ (l l₁ l₂: term),
+    followsFrom l bot →
+    is_equiv l l₁ l₂ →
+    ∀ {I : Interpretation}, interpTerm I l₁ = interpTerm I l₂ :=
+  by intros l l₁ l₂ h₁ h₂ I
+     simp at h₂
+     rewrite [h₂] at h₁
+     have h₃ := @followsBot (xor l₁ l₂) h₁ I
+     simp at h₃
+     exact notBneIsEq h₃
