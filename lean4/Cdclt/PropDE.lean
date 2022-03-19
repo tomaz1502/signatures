@@ -175,3 +175,9 @@ theorem eqOfInterps: ∀ (l l₁ l₂: term),
      have h₃ := @followsBot (xor l₁ l₂) h₁ I
      simp at h₃
      exact notBneIsEq h₃
+
+
+theorem bla: followsFrom (xor mpDE' top) bot := sorry
+
+theorem goal₂: ∀ {x y: Bool}, curryModusPonens x y = true
+  | x, y => @eqOfInterps (xor mpDE' top) mpDE' top bla rfl (λ n => if n == 1000 then x else y)
