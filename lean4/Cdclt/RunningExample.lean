@@ -12,42 +12,39 @@ def Interpretation: Type := Nat → Bool
   | true, false => false
   | _,    _     => true
 
-@[simp] def interpTerm (f : Interpretation) : term → Bool
+def beq (x y : Bool)  : Bool := x == y
+def bneq (x y : Bool) : Bool := x != y
+
+#check BEq
+
+-- def inferType (t : term) : Type :=
+--   match t with
+--   | lambda _ t₁ => Bool → (inferType t₁)
+--   | _ => Bool
+
+-- @[simp] def interpTerm' (f : Interpretation) (t : term) : inferType t × Type :=
+--   match t with
+--   | term.const i _ => (f i, sorry)
+--   | _ => sorry
+
+@[simp] def interpTerm (f : Interpretation) (t : term) : Bool :=
+  match t with
   | term.const   i  _  => f i
   | term.not     t₁    => not $ interpTerm f t₁
   | term.and     t₁ t₂ => and (interpTerm f t₁) (interpTerm f t₂)
   | term.or      t₁ t₂ => or (interpTerm f t₁) (interpTerm f t₂)
   | term.implies t₁ t₂ => bimplies (interpTerm f t₁) (interpTerm f t₂)
-  | term.xor     t₁ t₂ => interpTerm f t₁ != interpTerm f t₂
-  | term.eq      t₁ t₂ => interpTerm f t₁ == interpTerm f t₂
+  | term.xor     t₁ t₂ => bneq (interpTerm f t₁) (interpTerm f t₂)
+  | term.eq      t₁ t₂ => beq  (interpTerm f t₁) (interpTerm f t₂)
+  | term.app     t₁ t₂ => interpTerm f t₂
   | term.bot           => false
   | term.top           => true
   | _                  => false
 
-def y: term := const 1 boolSort
-
-def emDE: term := term.or y (term.not y)
-
-def em (x : Bool) : Bool := or x (not x)
-
-axiom r: ∀ I, interpTerm I emDE
-
-theorem classicalLogic : ∀ b , em b = true := λ b => r (λ n => b)
-
-def z: term := const 2 boolSort
-def w: term := const 3 boolSort 
-
-def mpDE: term := term.implies (term.and (term.implies z w) z) w
-
-def mp (x y: Bool) : Bool := bimplies (and (bimplies x y) x) y
-
-axiom r': ∀ I, interpTerm I mpDE
-theorem mpCorrect': ∀ b₁ b₂, mp b₁ b₂ = true := λ b₁ b₂ => r' (λ z => if z == 2 then b₁ else b₂)
-
-#check mpCorrect'
-
 def followsFrom (t₁ t₂ : term) : Prop :=
   ∀ {f : Interpretation}, interpTerm f t₁ = true → interpTerm f t₂ = true
+
+-- Boolean rules
 
 theorem notImplies1' : ∀ {t₁ t₂ : term},
   followsFrom (not $ implies t₁ t₂) t₁
@@ -121,6 +118,41 @@ theorem conjunction: ∀ {t₁ t₂: term} {f: Interpretation},
                             rewrite [h₁, h₂]
                             rfl
 
+-- EUF Rules
+
+theorem refl': ∀ {t: term} {f: Interpretation},
+  interpTerm f (eq t t) = true
+  | t, f => by simp
+               cases interpTerm f t with
+               | true => simp
+               | false => simp
+
+theorem beqSymm: ∀ {a b: Bool}, a == b → b == a
+  | true,  true,  _ => rfl
+  | false, true,  h => by simp at h
+  | true,  false, h => by simp at h
+  | false, false, _ => rfl
+
+theorem symm': ∀ {t₁ t₂: term} {f: Interpretation},
+  interpTerm f (eq t₁ t₂) → interpTerm f (eq t₂ t₁)
+  | _, _, _, h =>
+    by simp at *
+       exact beqSymm h
+
+#check Eq.trans
+#check Eq.symm
+
+theorem beqTrans: ∀ {a b c: Bool}, a == b → b == c → a == c
+  | a, b, c, h₁, h₂ => sorry
+
+theorem trans': ∀ {t₁ t₂ t₃: term} {f: Interpretation},
+  interpTerm f (eq t₁ t₂) → interpTerm f (eq t₂ t₃) → interpTerm f (eq t₁ t₃)
+  | _, _, _, _, h₁, h₂ =>
+    by simp at *
+       exact beqTrans h₁ h₂
+
+-- Examples
+
 def p: term := const 1000 boolSort
 def q: term := const 1001 boolSort
 
@@ -145,25 +177,26 @@ theorem followsBot : ∀ {t : term},
                by simp at h'
     | false => rfl
 
-theorem zz: ∀ {f: Interpretation}, interpTerm f notMpDE = false := followsBot th0'
-theorem ww: ∀ {f: Interpretation}, interpTerm f mpDE' = true := interpNotTerm zz
+theorem notMpDEFalse: ∀ {f: Interpretation}, interpTerm f notMpDE = false :=
+  followsBot th0'
+theorem mpDETrue: ∀ {f: Interpretation}, interpTerm f mpDE' = true :=
+  interpNotTerm notMpDEFalse
 
 def modusPonens (x y: Bool) : Bool := bimplies (and (bimplies x y) x) y
 def curryModusPonens (x y: Bool) : Bool := bimplies x (bimplies (bimplies x y) y)
 
-theorem goal: ∀ {x y: Bool}, curryModusPonens x y = true
-  | x, y => @ww λ n => if n == 1000 then x else y
-
+theorem mp: ∀ {x y: Bool}, bimplies x (bimplies (bimplies x y) y) = true
+  | x, y => @mpDETrue λ n => if n == 1000 then x else y
 
 variable {b₁ b₂: Bool}
 
 @[simp] def is_equiv (l l₁ l₂: term) := l = xor l₁ l₂
 
 theorem notBneIsEq: ∀ {a b : Bool}, ((a != b) = false) → a = b
-  | true, true, _ => rfl
+  | true, true,   _ => rfl
   | false, false, _ => rfl
-  | true, false, h => by simp at h
-  | false, true, h => by simp at h
+  | true, false,  h => by simp at h
+  | false, true,  h => by simp at h
 
 theorem eqOfInterps: ∀ (l l₁ l₂: term),
     followsFrom l bot →
@@ -175,9 +208,3 @@ theorem eqOfInterps: ∀ (l l₁ l₂: term),
      have h₃ := @followsBot (xor l₁ l₂) h₁ I
      simp at h₃
      exact notBneIsEq h₃
-
-
-theorem bla: followsFrom (xor mpDE' top) bot := sorry
-
-theorem goal₂: ∀ {x y: Bool}, curryModusPonens x y = true
-  | x, y => @eqOfInterps (xor mpDE' top) mpDE' top bla rfl (λ n => if n == 1000 then x else y)

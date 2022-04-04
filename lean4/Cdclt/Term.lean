@@ -156,6 +156,7 @@ instance: ToString value where toString := valueToString
    or quantified formulas
    Quantified variables are also
    parameterized by a Nat -/
+
 inductive term : Type where
 | undef : term
 | val : value → sort → term
@@ -164,6 +165,7 @@ inductive term : Type where
 | choice : Nat → term → term
 | qforall : Nat → term → term
 | lambda : Nat → term → term
+
 deriving DecidableEq
 
 namespace term
@@ -196,6 +198,7 @@ open value
 @[matchPattern] def eqConst := const eqNum dep
 @[matchPattern] def distinctConst := const distinctNum dep
 @[matchPattern] def fIteConst := const fIteNum dep
+
 
 @[matchPattern] def plusConst :=
   const plusNum (arrow intSort (arrow intSort intSort))
