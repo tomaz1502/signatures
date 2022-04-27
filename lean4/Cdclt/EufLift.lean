@@ -73,101 +73,83 @@ def coe' {A B : Type} : (A = B) → A → B
 def followsFrom (t₁ t₂ : term) : Prop :=
   ∀ {Γ : Environment} {Δ : SEnvironment}, validWith Γ Δ t₁ → validWith Γ Δ t₂
 
-inductive T: Type where
-| a : T
-| b : T
-| c : T
-| d : T
-| e : T
-
-inductive O: Type where
-| O1 : O
-| O2 : O
-| O3 : O
-deriving BEq
-
 open Nat
+
+set_option quotPrecheck false
+
+
+notation "const" e => fun x => e
+
+
+def g : Nat → Nat := const 2
+
+#eval g 4
+
+notation "simpElim" => by simp at h; rewrite [r₁] at h; have z: false = true := h; simp at z;
+
+/- def simpEli2m h r := by simp at h; rewrite [r] at h; have z: false = true := h; simp at z -/
 
 theorem notImplies1 : ∀ {t₁ t₂ : term},
   followsFrom (not $ implies t₁ t₂) t₁
   | t₁, t₂, Γ, Δ, h =>
-    match r₁: interpTerm t₁ with
-    | some ⟨ atom 0, _ ⟩ => by simp at h
-                               rewrite [r₁] at h
+    by simp at h
+       match r₁: interpTerm t₁ with
+       | some ⟨ atom 0, _ ⟩ => rewrite [r₁] at h
                                have z: false = true := h
                                simp at z
-    | some ⟨ atom 1, k₁ ⟩ => match r₂: interpTerm t₂ with
-                             | some ⟨ atom 0, _ ⟩ => by simp at h
-                                                        rewrite [r₁, r₂] at h
+       | some ⟨ atom 1, k₁ ⟩ => match r₂: interpTerm t₂ with
+                                | some ⟨ atom 0, _ ⟩ => rewrite [r₁, r₂] at h
                                                         have z: false = true := h
                                                         simp at z
-                             | some ⟨ atom 1, k₂ ⟩ => by simp
+                                | some ⟨ atom 1, k₂ ⟩ => simp
                                                          rewrite [r₁]
                                                          show (let z: Bool := k₁ Γ Δ; z == true) = true
-                                                         simp at h
-
                                                          rewrite [r₁, r₂] at h
-
                                                          have h₂ : not (bimplies (k₁ Γ Δ) (k₂ Γ Δ)) == true := h
                                                          cases rk: k₁ Γ Δ with
                                                          | true => rfl
                                                          | false => rewrite [rk] at h₂
                                                                     simp at h₂
-                             | some ⟨ atom (succ (succ _)), _ ⟩ => by simp at h
-                                                                      rewrite [r₁, r₂] at h
+                                | some ⟨ atom (succ (succ _)), _ ⟩ => rewrite [r₁, r₂] at h
                                                                       have z: false = true := h
                                                                       simp at z
-                             
-                             | some ⟨ sort.undef, _ ⟩ => by simp at h
-                                                            rewrite [r₁, r₂] at h
+                                | some ⟨ sort.undef, _ ⟩ => rewrite [r₁, r₂] at h
                                                             have z: false = true := h
                                                             simp at z
-                             | some ⟨ sort.array _ _, _ ⟩ => by simp at h 
-                                                                rewrite [r₁, r₂] at h
+                                | some ⟨ sort.array _ _, _ ⟩ => rewrite [r₁, r₂] at h
                                                                 have z: false = true := h
                                                                 simp at z
-                             | some ⟨ sort.bv _, _ ⟩ => by simp at h 
-                                                           rewrite [r₁, r₂] at h
+                                | some ⟨ sort.bv _, _ ⟩ => rewrite [r₁, r₂] at h
                                                            have z: false = true := h
                                                            simp at z
-                             | some ⟨ sort.arrow _ _, _ ⟩ => by simp at h 
-                                                                rewrite [r₁, r₂] at h
+                                | some ⟨ sort.arrow _ _, _ ⟩ => rewrite [r₁, r₂] at h
                                                                 have z: false = true := h
                                                                 simp at z
-                             | some ⟨ sort.dep, _ ⟩ => by simp at h
-                                                          rewrite [r₁, r₂] at h
+                                | some ⟨ sort.dep, _ ⟩ => rewrite [r₁, r₂] at h
                                                           have z: false = true := h
                                                           simp at z
-                             | none => by simp at h
-                                          rewrite [r₁, r₂] at h
+                                | none => rewrite [r₁, r₂] at h
                                           have z: false = true := h
                                           simp at z
-    | some ⟨ atom (succ (succ n)), _ ⟩ => by simp at h
-                                             rewrite [r₁] at h
+       | some ⟨ atom (succ (succ _)), _ ⟩ => rewrite [r₁] at h
                                              have z: false = true := h
                                              simp at z
-    | some ⟨ sort.undef, _ ⟩ => by simp at h
-                                   rewrite [r₁] at h
+       | some ⟨ sort.undef, _ ⟩ => rewrite [r₁] at h
                                    have z: false = true := h
                                    simp at z
-    | some ⟨ sort.array _ _, _ ⟩ => by simp at h 
-                                       rewrite [r₁] at h
-                                       have z: false = true := h
+       | some ⟨ sort.array _ _, _ ⟩ => rewrite [r₁] at h;
+                                       have z: false = true := h;
                                        simp at z
-    | some ⟨ sort.bv _, _ ⟩ => by simp at h 
-                                  rewrite [r₁] at h
+       | some ⟨ sort.bv _, _ ⟩ => rewrite [r₁] at h
                                   have z: false = true := h
                                   simp at z
-    | some ⟨ sort.arrow _ _, _ ⟩ => by simp at h 
-                                       rewrite [r₁] at h
+       | some ⟨ sort.arrow _ _, _ ⟩ => rewrite [r₁] at h
                                        have z: false = true := h
                                        simp at z
-    | some ⟨ sort.dep, _ ⟩ => by simp at h
-                                 rewrite [r₁] at h
+       | some ⟨ sort.dep, _ ⟩ => rewrite [r₁] at h
                                  have z: false = true := h
                                  simp at z
-    | none => by simp at h
-                 rewrite [r₁] at h
+       | none => rewrite [r₁] at h
                  have z: false = true := h
                  simp at z
 
