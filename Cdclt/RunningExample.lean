@@ -5,25 +5,14 @@ open proof
 open term
 open rules
 
+noncomputable def beq  (b₁ b₂ : Bool) : Bool := b₁ == b₂
+noncomputable def bneq (b₁ b₂ : Bool) : Bool := b₁ != b₂
+
+@[simp] noncomputable def bimplies : Bool → Bool → Bool
+| true, false => false
+| _,    _     => true
+
 noncomputable def Interpretation: Type := Nat → Bool
-
-noncomputable def fullInterpretation := Nat → ∀ A : Type, A
-noncomputable def fullInterpretation₂ := Nat → (A : Type) → A
-
-#check fullInterpretation₂
-#check fullInterpretation
-
-@[simp] noncomputable def bimplies (x y : Bool) : Bool :=
-  match x, y with
-  | true, false => false
-  | _,    _     => true
-
-noncomputable def beq  (x y : Bool) : Bool := x == y
-noncomputable def bneq (x y : Bool) : Bool := x != y
-
-#check BEq
-
-#check boolSort
 
 @[simp] noncomputable def interpTerm (f : Interpretation) (t : term) : Bool :=
   match t with
@@ -34,7 +23,6 @@ noncomputable def bneq (x y : Bool) : Bool := x != y
   | term.implies t₁ t₂ => bimplies (interpTerm f t₁) (interpTerm f t₂)
   | term.xor     t₁ t₂ => bneq (interpTerm f t₁) (interpTerm f t₂)
   | term.eq      t₁ t₂ => beq  (interpTerm f t₁) (interpTerm f t₂)
-  -- | term.app     t₁ t₂ => interpTerm f t₂
   | term.bot           => false
   | term.top           => true
   | _                  => false
@@ -81,13 +69,13 @@ theorem impliesElim' : ∀ {t₁ t₂: term},
     match r₁: interpTerm f t₁, r₂: interpTerm f t₂ with
     | false, _     => by simp
                          rewrite [r₁, r₂]
-                         rfl
+                         exact (Or.inl rfl)
     | true,  false => by simp at h
                          rewrite [r₁, r₂] at h
                          simp at h
     | true,  true  => by simp
                          rewrite [r₁, r₂]
-                         rfl
+                         exact (Or.inr rfl)
 
 theorem contradiction': ∀ {t: term},
   followsFrom (and (not t) t) bot
@@ -114,7 +102,7 @@ theorem conjunction: ∀ {t₁ t₂: term} {f: Interpretation},
   interpTerm f t₁ = true → interpTerm f t₂ = true → interpTerm f (and t₁ t₂)
   | t₁, t₂, f, h₁, h₂ => by simp
                             rewrite [h₁, h₂]
-                            rfl
+                            exact (And.intro rfl rfl)
 
 -- EUF Rules
 
