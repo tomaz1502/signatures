@@ -5,14 +5,14 @@ open proof
 open term
 open rules
 
-noncomputable def beq  (b₁ b₂ : Bool) : Bool := b₁ == b₂
-noncomputable def bneq (b₁ b₂ : Bool) : Bool := b₁ != b₂
+def beq  (b₁ b₂ : Bool) : Bool := b₁ == b₂
+def bneq (b₁ b₂ : Bool) : Bool := b₁ != b₂
 
-@[simp] noncomputable def bimplies : Bool → Bool → Bool
+@[simp] def bimplies : Bool → Bool → Bool
 | true, false => false
 | _,    _     => true
 
-noncomputable def Interpretation: Type := Nat → Bool
+def Interpretation: Type := Nat → Bool
 
 @[simp] noncomputable def interpTerm (f : Interpretation) (t : term) : Bool :=
   match t with
@@ -27,7 +27,7 @@ noncomputable def Interpretation: Type := Nat → Bool
   | term.top           => true
   | _                  => false
 
-noncomputable def followsFrom (t₁ t₂ : term) : Prop :=
+def followsFrom (t₁ t₂ : term) : Prop :=
   ∀ {f : Interpretation}, interpTerm f t₁ = true → interpTerm f t₂ = true
 
 -- Boolean rules
@@ -163,11 +163,10 @@ theorem trans': ∀ {t₁ t₂ t₃: term} {f: Interpretation},
 
 -- Examples
 
-noncomputable def p: term := const 1000 boolSort
-noncomputable def q: term := const 1001 boolSort
-
-noncomputable def mpDE' := implies p (implies (implies p q) q)
-noncomputable def notMpDE := (not mpDE')
+def p: term := const 1000 boolSort
+def q: term := const 1001 boolSort
+def mpDE' := implies p (implies (implies p q) q)
+def notMpDE := (not mpDE')
 
 theorem th0' : followsFrom notMpDE bot :=
   λ lean_a0 =>
@@ -192,15 +191,13 @@ theorem notMpDEFalse: ∀ {f: Interpretation}, interpTerm f notMpDE = false :=
 theorem mpDETrue: ∀ {f: Interpretation}, interpTerm f mpDE' = true :=
   interpNotTerm notMpDEFalse
 
-noncomputable def modusPonens (x y: Bool) : Bool := bimplies (and (bimplies x y) x) y
-noncomputable def curryModusPonens (x y: Bool) : Bool := bimplies x (bimplies (bimplies x y) y)
+def modusPonens (x y: Bool) : Bool := bimplies (and (bimplies x y) x) y
+def curryModusPonens (x y: Bool) : Bool := bimplies x (bimplies (bimplies x y) y)
 
-theorem mp: ∀ {x y: Bool}, bimplies x (bimplies (bimplies x y) y) = true
+theorem mp: ∀ {x y: Bool}, curryModusPonens x y = true
   | x, y => @mpDETrue λ n => if n == 1000 then x else y
 
-variable {b₁ b₂: Bool}
-
-@[simp] noncomputable def is_equiv (l l₁ l₂: term) := l = xor l₁ l₂
+@[simp] def is_equiv (l l₁ l₂: term) := l = xor l₁ l₂
 
 theorem notBneIsEq: ∀ {a b : Bool}, ((a != b) = false) → a = b
   | true, true,   _ => rfl
