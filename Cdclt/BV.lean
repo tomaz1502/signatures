@@ -54,8 +54,7 @@ def mkOnes (n : Nat) : term :=
 def mkBitOf : OptionM term → OptionM term → OptionM term :=
 λ ot₁ ot₂ =>
   ot₁ >>= λ t₁ => ot₂ >>= λ t₂ =>
-  sortOf t₁ >>= λ s₁ => sortOf t₂ >>= λ s₂ =>
-match (s₁, s₂) with
+match (sortOf t₁, sortOf t₂) with
 | (bv n, intSort) =>
   match t₂ with
   -- integer index has to be an in-range value
@@ -63,20 +62,20 @@ match (s₁, s₂) with
     (match t₁ with
     -- BV can be a constant
     | val (value.bitvec l) _ =>
-        match (List.get? (Int.toNat (n - i - 1)) l) with
-        | some b => if b then top else bot
+        match (List.get? l (Int.toNat (n - i - 1))) with
+        | some b => if b then some top else some bot
         | none => none
     -- or BV can be a var
-    | _ => bitOf t₁ t₂) else none
+    | _ => some (bitOf t₁ t₂)) else none
   | _ => none
 | (_, _) => none
 
-#eval mkBitOf (mkValBV [true, false, true, false]) (mkValInt 0)
-#eval mkBitOf (mkValBV [true, false, true, false]) (mkValInt 1)
-#eval mkBitOf (mkValBV [true, false, true, false]) (mkValInt 4)
-#eval mkBitOf (const 21 (bv 4)) (mkValInt 0)
-#eval mkBitOf (const 21 (bv 4)) (mkValInt 1)
-#eval mkBitOf (const 21 (bv 4)) (mkValInt 4)
+#eval mkBitOf (some (mkValBV [true, false, true, false])) (some (mkValInt 0))
+#eval mkBitOf (some (mkValBV [true, false, true, false])) (some (mkValInt 1))
+#eval mkBitOf (some (mkValBV [true, false, true, false])) (some (mkValInt 4))
+#eval mkBitOf (some (const 21 (bv 4))) (some (mkValInt 0))
+#eval mkBitOf (some (const 21 (bv 4))) (some (mkValInt 1))
+#eval mkBitOf (some (const 21 (bv 4))) (some (mkValInt 4))
 
 /- bitOfN t n
    bit-blasts a BV constant or variable.
@@ -155,9 +154,8 @@ def checkBinaryBV : OptionM term → OptionM term →
   (Nat → term → term → term) → OptionM term :=
   λ ot₁ ot₂ constr =>
     ot₁ >>= λ t₁ => ot₂ >>= λ t₂ =>
-    sortOf t₁ >>= λ s₁ => sortOf t₂ >>= λ s₂ =>
-  match (s₁, s₂) with
-  | (bv m, bv n) => if (m = n) then (constr m t₁ t₂) else none
+  match (sortOf t₁, sortOf t₂) with
+  | (bv m, bv n) => if (m = n) then some (constr m t₁ t₂) else none
   | (_, _) => none
 
 /- Given two lists, and a function that transforms elements of
@@ -266,9 +264,9 @@ axiom bbBvEqVal : ∀ {t₁ t₂ : term} (n : Nat),
 
 -- If term is a BV, construct its BV Not application
 def mkBvNot : OptionM term → OptionM term :=
-  λ ot => ot >>= λ t => sortOf t >>= λ s =>
-  match s with
-  | bv n => bvNot t
+  λ ot => ot >>= λ t =>
+  match sortOf t with
+  | bv n => some (bvNot t)
   | _ => none
 
 /-

@@ -36,9 +36,8 @@ def curryModusPonens (x y: Bool) : Bool := bimplies x (bimplies (bimplies x y) y
 def envMP (x y : Bool) : Environment := λ i Δ s => 
   match s with
   | boolSort => if i == 1000 then x else y
-  | x => defaultValue Δ x
+  | s' => defaultValue Δ s'
 
 theorem mp: ∀ (x y: Bool), curryModusPonens x y = true := λ x y =>
   @mpDETrue (envMP x y) defaultSEnvironment
-
 

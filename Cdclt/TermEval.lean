@@ -19,42 +19,32 @@ partial def termEval (t : term) : term :=
     | bot => top
     | _ => t
   | and t₁ t₂ =>
-    do let t₁' ← termEval t₁
-       let t₂' ← termEval t₂
-       match t₁', t₂' with
+       match termEval t₁, termEval t₂ with
        | top, top => top
        | bot, _ => bot
        | _, bot => bot
        | _, _ => t
   | or t₁ t₂ =>
-    do let t₁' ← termEval t₁
-       let t₂' ← termEval t₂
-       match t₁', t₂' with
+       match termEval t₁, termEval t₂ with
        | bot, bot => bot
        | top, _ => top
        | _, top => top
        | _, _ => t
   | implies t₁ t₂ =>
-    do let t₁' ← termEval t₁
-       let t₂' ← termEval t₂
-       match t₁', t₂' with
+       match termEval t₁, termEval t₂ with
        | bot, _ => top
        | top, bot => bot
        | top, top => top
        | _, _ => t
   | xor t₁ t₂ =>
-    let t₁' := termEval t₁
-    let t₂' := termEval t₂
-    match t₁', t₂' with
+    match termEval t₁, termEval t₂ with
     | bot, top => top
     | top, bot => top
     | top, top => bot
     | bot, bot => bot
     | _, _ => t
   | eq t₁ t₂ =>
-    do let t₁' := termEval t₁
-       let t₂' := termEval t₂
-       match t₁', t₂' with
+       match termEval t₁, termEval t₂ with
        | bot, top => bot
        | top, bot => bot
        | top, top => top
@@ -77,7 +67,7 @@ partial def termEval (t : term) : term :=
     let i' := termEval i''
     match b', i' with
     | val (value.bitvec b) (bv n), val (value.integer i) _ =>
-      match (List.get? (Int.toNat (n - i - 1)) b) with
+      match (List.get? b (Int.toNat (n - i - 1))) with
         | some bit => if bit then top else bot
         | none => term.undef
     | _, _ => t

@@ -18,10 +18,6 @@ axiom trans : ∀ {t₁ t₂ t₃ : term},
   thHolds (eq t₁ t₂) → thHolds (eq t₂ t₃) → thHolds (eq t₁ t₃)
 
 
-variable (f g : Bool → Bool)
-#check f == g
-#check f =  g
-
 axiom cong : ∀ {f₁ t₁ : term} {f₂ t₂ : term},
   thHolds (eq f₁ f₂) → thHolds (eq t₁ t₂) →
         thHolds (eq (app f₁ t₁) (app f₂ t₂))
