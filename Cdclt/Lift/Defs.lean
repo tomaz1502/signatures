@@ -15,7 +15,7 @@ set_option maxHeartbeats 300000
 | _, _, _ => none
 
 @[simp] def interpTerm : term → Interpretation
-| term.const   n  s  => some ⟨ s, λ Γ => Γ n s  ⟩
+| term.const   n  s  => some ⟨ s, λ Γ Δ => Γ n Δ s  ⟩
 | term.not     t₁    => match interpTerm t₁ with
                         | some ⟨ boolSort, k ⟩ => some ⟨ boolSort, λ Γ Δ => not (k Γ Δ) ⟩
                         | _ => none

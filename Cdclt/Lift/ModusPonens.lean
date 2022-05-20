@@ -1,5 +1,4 @@
-import Cdclt.Lift.Types
-import Cdclt.Lift.Defs
+import Cdclt.Lift.Env
 import Cdclt.Lift.Rules
 import Cdclt.Term
 
@@ -34,7 +33,12 @@ def bimplies (x y: Bool) : Bool := !x || y
 
 def curryModusPonens (x y: Bool) : Bool := bimplies x (bimplies (bimplies x y) y)
 
-/- theorem mp: ∀ (x y: Bool), curryModusPonens x y = true := -/
-/-   @mpDETrue defaultEnvironment defaultSEnvironment -/
+def envMP (x y : Bool) : Environment := λ i Δ s => 
+  match s with
+  | boolSort => if i == 1000 then x else y
+  | x => defaultValue Δ x
+
+theorem mp: ∀ (x y: Bool), curryModusPonens x y = true := λ x y =>
+  @mpDETrue (envMP x y) defaultSEnvironment
 
 

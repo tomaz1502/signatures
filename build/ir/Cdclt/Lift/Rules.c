@@ -1,6 +1,6 @@
 // Lean compiler output
 // Module: Cdclt.Lift.Rules
-// Imports: Init Cdclt.Lift.Defs Cdclt.Lift.Types Cdclt.Term
+// Imports: Init Cdclt.Lift.Defs Cdclt.Term
 #include <lean/lean.h>
 #if defined(__clang__)
 #pragma clang diagnostic ignored "-Wunused-parameter"
@@ -2450,7 +2450,6 @@ return x_3;
 }
 lean_object* initialize_Init(uint8_t builtin, lean_object*);
 lean_object* initialize_Cdclt_Lift_Defs(uint8_t builtin, lean_object*);
-lean_object* initialize_Cdclt_Lift_Types(uint8_t builtin, lean_object*);
 lean_object* initialize_Cdclt_Term(uint8_t builtin, lean_object*);
 static bool _G_initialized = false;
 LEAN_EXPORT lean_object* initialize_Cdclt_Lift_Rules(uint8_t builtin, lean_object* w) {
@@ -2461,9 +2460,6 @@ res = initialize_Init(builtin, lean_io_mk_world());
 if (lean_io_result_is_error(res)) return res;
 lean_dec_ref(res);
 res = initialize_Cdclt_Lift_Defs(builtin, lean_io_mk_world());
-if (lean_io_result_is_error(res)) return res;
-lean_dec_ref(res);
-res = initialize_Cdclt_Lift_Types(builtin, lean_io_mk_world());
 if (lean_io_result_is_error(res)) return res;
 lean_dec_ref(res);
 res = initialize_Cdclt_Term(builtin, lean_io_mk_world());

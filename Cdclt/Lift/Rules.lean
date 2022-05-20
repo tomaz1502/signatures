@@ -1,5 +1,4 @@
 import Cdclt.Lift.Defs
-import Cdclt.Lift.Types
 import Cdclt.Term
 
 open Types

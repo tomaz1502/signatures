@@ -319,7 +319,7 @@ LEAN_EXPORT lean_object* l_interpTerm___lambda__3(lean_object* x_1, lean_object*
 _start:
 {
 lean_object* x_5; 
-x_5 = lean_apply_3(x_3, x_1, x_2, x_4);
+x_5 = lean_apply_3(x_3, x_1, x_4, x_2);
 return x_5;
 }
 }
