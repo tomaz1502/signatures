@@ -14,7 +14,7 @@ def bneq (b₁ b₂ : Bool) : Bool := b₁ != b₂
 
 def Interpretation: Type := Nat → Bool
 
-@[simp] noncomputable def interpTerm (f : Interpretation) (t : term) : Bool :=
+@[simp] def interpTerm (f : Interpretation) (t : term) : Bool :=
   match t with
   | term.const   i  _  => f i
   | term.not     t₁    => not $ interpTerm f t₁

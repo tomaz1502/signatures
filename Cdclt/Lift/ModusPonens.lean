@@ -3,7 +3,7 @@ import Cdclt.Lift.Rules
 import Cdclt.Term
 
 open Types
-
+open Rules
 open proof
 open term
 open sort
@@ -12,7 +12,7 @@ def p: term := const 1000 boolSort
 def q: term := const 1001 boolSort
 
 def mpDE: term := implies p (implies (implies p q) q)
-def notMpDE := (not mpDE)
+def notMpDE := not mpDE
  
 theorem th0: followsFrom notMpDE bot := λ lean_a0 =>
   have lean_s0 := notImplies2 lean_a0
@@ -23,21 +23,23 @@ theorem th0: followsFrom notMpDE bot := λ lean_a0 =>
   have lean_s9 := notImplies2 lean_s0
   contradiction (conjunction lean_s9 lean_s6)
 
-theorem notMpDEFalse: ∀ {Γ: Environment} {Δ: SEnvironment}, !validWith Γ Δ notMpDE :=
-  followsBot th0
-
-theorem mpDETrue: ∀ {Γ: Environment} {Δ: SEnvironment}, validWith Γ Δ mpDE := 
-  interpNotTerm rfl notMpDEFalse
-
-def bimplies (x y: Bool) : Bool := !x || y
-
-def curryModusPonens (x y: Bool) : Bool := bimplies x (bimplies (bimplies x y) y)
-
-def envMP (x y : Bool) : Environment := λ i Δ s => 
+noncomputable def envMP (x y : Prop) : Environment := λ i Δ s => 
   match s with
   | boolSort => if i == 1000 then x else y
   | s' => defaultValue Δ s'
 
-theorem mp: ∀ (x y: Bool), curryModusPonens x y = true := λ x y =>
+theorem notMpDEFalse: ∀ {Γ: Environment} {Δ: SEnvironment}, ¬ validWith Γ Δ notMpDE :=
+  followsBot th0
+
+theorem mpDETrue: ∀ {Γ: Environment} {Δ: SEnvironment}, validWith Γ Δ mpDE := 
+  have mpDEIsBool : isBool mpDE := rfl
+  interpNotTerm mpDEIsBool notMpDEFalse
+
+def curryModusPonens (x y: Prop) : Prop := x → (x → y) → y
+
+theorem mp: ∀ (x y: Prop), curryModusPonens x y := λ x y =>
   @mpDETrue (envMP x y) defaultSEnvironment
 
+theorem mp' (x y : Prop) : curryModusPonens x y := λ h₁ h₂ => h₂ h₁
+
+#check mp'

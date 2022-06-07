@@ -2,49 +2,42 @@ import Cdclt.Lift.Defs
 import Cdclt.Term
 
 open Types
-
 open proof
 open term
 open sort
-
 open Nat
+
+namespace Rules
 
 syntax "absurdHyp" ident "(" ident,+ ")" : tactic
 macro_rules
-  | `(tactic| absurdHyp $h:ident ($n:ident)) => `(tactic| rewrite [($n)] at ($h); have z: false = true := $h; cases z)
-  | `(tactic| absurdHyp $h:ident ($n:ident, $m:ident)) => `(tactic| rewrite [($n), ($m)] at ($h); have z: false = true := $h; cases z)
+  | `(tactic| absurdHyp $h:ident ($n:ident)) => `(tactic| rewrite [($n)] at ($h); have z: False := ($h); cases z)
+  | `(tactic| absurdHyp $h:ident ($n:ident, $m:ident)) => `(tactic| rewrite [($n), ($m)] at ($h); have z: False := ($h); simp at z)
+
+open Classical
 
 theorem notImplies1 : ∀ {t₁ t₂ : term},
-  followsFrom (not $ implies t₁ t₂) t₁
-  | t₁, t₂, Γ, Δ, h =>
-    by simp at h
-       match r₁: interpTerm t₁, r₂: interpTerm t₂ with
-       | some ⟨ atom 1, k₁ ⟩, some ⟨ atom 1, k₂ ⟩ =>
+  followsFrom (not $ implies t₁ t₂) t₁ :=
+  by intros t₁ t₂ Γ Δ h
+     simp at h
+     split at h
+     case h_1 _ k h' =>
+       split at h'
+       case h_1 _ k' h'' =>
+         split at h''
+         case h_1 _ k₁ k₂ rt₁ rt₂ =>
            simp
-           rewrite [r₁]
-           show k₁ Γ Δ = true
-           rewrite [r₁, r₂] at h
-           have h₂ : not (!(k₁ Γ Δ) || (k₂ Γ Δ)) = true := h
-           match rk: k₁ Γ Δ with
-           | true  => rfl
-           | false => rewrite [rk] at h₂
-                      simp at h₂
-       | some ⟨ atom 0, _ ⟩, _  => absurdHyp h (r₁)
-       | some ⟨ atom 1, k₁ ⟩, some ⟨ atom 0, _ ⟩  => absurdHyp h (r₁, r₂)
-       | some ⟨ atom 1, k₁ ⟩, some ⟨ atom (succ (succ _)), _ ⟩ => absurdHyp h (r₁, r₂)
-       | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.undef, _ ⟩           => absurdHyp h (r₁, r₂)
-       | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.array _ _, _ ⟩       => absurdHyp h (r₁, r₂)
-       | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.bv _, _ ⟩            => absurdHyp h (r₁, r₂)
-       | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.arrow _ _, _ ⟩       => absurdHyp h (r₁, r₂)
-       | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.dep, _ ⟩             => absurdHyp h (r₁, r₂)
-       | some ⟨ atom 1, k₁ ⟩, none                             => absurdHyp h (r₁, r₂)
-       | some ⟨ atom (succ (succ _)), _ ⟩, _ => absurdHyp h (r₁) 
-       | some ⟨ sort.undef, _ ⟩, _           => absurdHyp h (r₁) 
-       | some ⟨ sort.array _ _, _ ⟩, _       => absurdHyp h (r₁)
-       | some ⟨ sort.bv _, _ ⟩, _            => absurdHyp h (r₁)
-       | some ⟨ sort.arrow _ _, _ ⟩, _       => absurdHyp h (r₁)
-       | some ⟨ sort.dep, _ ⟩, _             => absurdHyp h (r₁)
-       | none, _                             => absurdHyp h (r₁)
+           rewrite [rt₁]
+           have ek : (fun Γ Δ => ¬ k' Γ Δ) = k :=
+             by injection h' with h'; injection h' with _ h'; exact h';
+           have fe : (fun Γ Δ => k₁ Γ Δ → k₂ Γ Δ) = k' :=
+             by injection h'' with h''; injection h'' with _ h''; exact h''
+           rewrite [← ek, ← fe] at h
+           apply byContradiction
+           exact (λ hf => h (λ k₁w => False.elim (hf k₁w)))
+         case h_2 => simp at h''
+       case h_2 => simp at h'
+     case h_2 => exact (False.elim h)
 
 theorem notImplies2 : ∀ {t₁ t₂ : term},
   followsFrom (not $ implies t₁ t₂) (not t₂)
@@ -54,14 +47,13 @@ theorem notImplies2 : ∀ {t₁ t₂ : term},
        | some ⟨ atom 1, k₁ ⟩, some ⟨ atom 1, k₂ ⟩ =>
            simp
            rewrite [r₂]
-           show (!k₂ Γ Δ) = true
+           show ¬ k₂ Γ Δ
            rewrite [r₁, r₂] at h
-           have h₂ : not (!(k₁ Γ Δ) || (k₂ Γ Δ)) = true := h
-           match rk: k₂ Γ Δ with
-           | true  => rewrite [rk] at h₂
-                      simp at h₂
-           | false => rfl
-       | some ⟨ atom 0, _ ⟩, _  => absurdHyp h (r₁)
+           have h₂ : ¬ ((k₁ Γ Δ) → (k₂ Γ Δ)) := h
+           match em (k₂ Γ Δ) with
+           | Or.inl r  => exact False.elim (h₂ (λ _ => r))
+           | Or.inr r  => exact r
+       | some ⟨ atom 0, _ ⟩, _  => rewrite [r₁] at h; simp at h
        | some ⟨ atom 1, k₁ ⟩, some ⟨ atom 0, _ ⟩  => absurdHyp h (r₁, r₂)
        | some ⟨ atom 1, k₁ ⟩, some ⟨ atom (succ (succ _)), _ ⟩ => absurdHyp h (r₁, r₂)
        | some ⟨ atom 1, k₁ ⟩, some ⟨ sort.undef, _ ⟩           => absurdHyp h (r₁, r₂)
@@ -72,9 +64,9 @@ theorem notImplies2 : ∀ {t₁ t₂ : term},
        | some ⟨ atom 1, k₁ ⟩, none                             => absurdHyp h (r₁, r₂)
        | some ⟨ atom (succ (succ _)), _ ⟩, _ => absurdHyp h (r₁) 
        | some ⟨ sort.undef, _ ⟩, _           => absurdHyp h (r₁) 
-       | some ⟨ sort.array _ _, _ ⟩, _       => absurdHyp h (r₁)
-       | some ⟨ sort.bv _, _ ⟩, _            => absurdHyp h (r₁)
-       | some ⟨ sort.arrow _ _, _ ⟩, _       => absurdHyp h (r₁)
+       | some ⟨ sort.array _ _, _ ⟩, _       => absurdHyp h (r₁) 
+       | some ⟨ sort.bv _, _ ⟩, _            => absurdHyp h (r₁) 
+       | some ⟨ sort.arrow _ _, _ ⟩, _       => absurdHyp h (r₁) 
        | some ⟨ sort.dep, _ ⟩, _             => absurdHyp h (r₁)
        | none, _                             => absurdHyp h (r₁)
 
@@ -87,7 +79,14 @@ theorem impliesElim : ∀ {t₁ t₂ : term},
            simp
            rewrite [r₁, r₂]
            rewrite [r₁, r₂] at h
-           exact h
+           show (¬ k₁ Γ Δ) ∨ (k₂ Γ Δ)
+           have h₂ : k₁ Γ Δ → k₂ Γ Δ := h
+           match em (k₁ Γ Δ), em (k₂ Γ Δ) with
+           | Or.inl _, Or.inl k₂W => exact Or.inr k₂W
+           | Or.inl k₁W, Or.inr nk₂W => have k₂W := h₂ k₁W
+                                        exact (False.elim (nk₂W k₂W))
+           | Or.inr _, Or.inl k₂W => exact Or.inr k₂W
+           | Or.inr nk₁W, Or.inr _ => exact Or.inl nk₁W
        | some ⟨ atom 0, _ ⟩, _  => absurdHyp h (r₁)
        | some ⟨ atom 1, k₁ ⟩, some ⟨ atom 0, _ ⟩  => absurdHyp h (r₁, r₂)
        | some ⟨ atom 1, k₁ ⟩, some ⟨ atom (succ (succ _)), _ ⟩ => absurdHyp h (r₁, r₂)
@@ -113,12 +112,8 @@ theorem contradiction: ∀ {t: term},
     | some ⟨ atom 1, k ⟩ =>
         rewrite [r] at h;
         simp at h
-        have hh: (!(k Γ Δ) && (k Γ Δ)) = true := h
-        cases rk: k Γ Δ with
-        | true  => rewrite [rk] at hh
-                   simp at hh
-        | false => rewrite [rk] at hh
-                   simp at hh
+        have ⟨nkW, kW⟩ : ¬ (k Γ Δ) ∧ k Γ Δ := h
+        exact False.elim (nkW kW)
     | some ⟨ atom 0, _ ⟩               => absurdHyp h (r)
     | some ⟨ atom (succ (succ _)), _ ⟩ => absurdHyp h (r)
     | some ⟨ sort.undef, _ ⟩           => absurdHyp h (r)
@@ -136,16 +131,15 @@ theorem R1 : ∀ {t₁ t₂ : term},
     | some ⟨ atom 1, k₁ ⟩, some ⟨ atom 1, k₂ ⟩ =>
         simp at *
         rewrite [r₁, r₂] at h
-        have hh: (and (or (not (k₁ Γ Δ)) (k₂ Γ Δ)) (k₁ Γ Δ)) = true := h
-        cases rk2: k₂ Γ Δ with
-        | true  => rewrite [r₂]
-                   show (Coe.coe (k₂ Γ Δ) = true)
-                   rewrite [rk2]
-                   rfl
-        | false => rewrite [rk2] at hh
-                   cases rk1: k₁ Γ Δ with
-                   | true  => rewrite [rk1] at hh; simp at hh
-                   | false => rewrite [rk1] at hh; simp at hh
+        rewrite [r₂]
+        have ⟨ H, k₁W ⟩: ((¬ (k₁ Γ Δ)) ∨ (k₂ Γ Δ)) ∧ (k₁ Γ Δ) := h
+        match em (k₂ Γ Δ) with
+        | Or.inl k₂W  => exact k₂W
+        | Or.inr nk₂W => match em (k₁ Γ Δ) with
+                         | Or.inl k₁W  => match H with
+                                          | Or.inl nk₁W => exact (False.elim (nk₁W k₁W))
+                                          | Or.inr k₂W  => exact k₂W
+                         | Or.inr nk₁W => exact (False.elim (nk₁W k₁W))
     | some ⟨ atom 1, _ ⟩, some ⟨ atom 0, _ ⟩               => absurdHyp h (r₁, r₂)
     | some ⟨ atom 1, _ ⟩, some ⟨ atom (succ (succ _)), _ ⟩ => absurdHyp h (r₁, r₂)
     | some ⟨ atom 1, _ ⟩, some ⟨ sort.undef, _ ⟩           => absurdHyp h (r₁, r₂)
@@ -169,13 +163,13 @@ theorem conjunction: ∀ {t₁ t₂: term} {Γ: Environment} {Δ : SEnvironment}
     simp at *
     match r₁: interpTerm t₁, r₂: interpTerm t₂ with
     | some ⟨ atom 1, k₁ ⟩, some ⟨ atom 1, k₂ ⟩ =>
-        show (and (k₁ Γ Δ) (k₂ Γ Δ)) = true
+        show (k₁ Γ Δ) ∧ (k₂ Γ Δ)
         simp
         rewrite [r₁] at h₁
         rewrite [r₂] at h₂
-        have k₁T: (k₁ Γ Δ) = true := h₁
-        have k₂T: (k₂ Γ Δ) = true := h₂
-        exact And.intro k₁T k₂T
+        have k₁W: (k₁ Γ Δ) := h₁
+        have k₂W: (k₂ Γ Δ) := h₂
+        exact And.intro k₁W k₂W
     | some ⟨ atom 1, _ ⟩, some ⟨ atom 0, _ ⟩               => absurdHyp h₂ (r₂)
     | some ⟨ atom 1, _ ⟩, some ⟨ atom (succ (succ _)), _ ⟩ => absurdHyp h₂ (r₂)
     | some ⟨ atom 1, _ ⟩, some ⟨ sort.undef, _ ⟩           => absurdHyp h₂ (r₂)
@@ -193,14 +187,9 @@ theorem conjunction: ∀ {t₁ t₂: term} {Γ: Environment} {Δ : SEnvironment}
     | some ⟨ sort.dep, _ ⟩, _              => absurdHyp h₁ (r₁)
     | none, _                              => absurdHyp h₁ (r₁)
 
-theorem neqImpliesBneq: ∀ {b: Bool}, ¬ (b = true) → (!b) = true
-  | true, h  => by simp at h
-  | false, _ => rfl
-
 theorem followsBot: ∀ {t: term},
-  followsFrom t bot → ∀ {Γ : Environment} {Δ : SEnvironment}, !validWith Γ Δ t
+  followsFrom t bot → ∀ {Γ : Environment} {Δ : SEnvironment}, ¬ validWith Γ Δ t
   | t, h, Γ, Δ => by
-    apply @neqImpliesBneq (validWith Γ Δ t)
     intro validT
     have validBot := @h Γ Δ validT
     simp at validBot
@@ -212,20 +201,16 @@ theorem followsBot: ∀ {t: term},
          | _ => false
 
 theorem interpNotTerm: ∀ {Γ: Environment} {Δ: SEnvironment} {t: term},
-  isBool t → !validWith Γ Δ (not t) → validWith Γ Δ t
+  isBool t → ¬ validWith Γ Δ (not t) → validWith Γ Δ t
   | Γ, Δ, t, bt, h => by
+    simp
     match r: interpTerm t with
-    | some ⟨ atom 1, k ⟩ => match rk: k Γ Δ with
-                            | true  => simp
-                                       rewrite [r]
-                                       show (Coe.coe (k Γ Δ) = true)
-                                       rewrite [rk]
-                                       rfl
-                            | false => simp at h
-                                       rewrite [r] at h
-                                       have notNotT: (!(!k Γ Δ)) = true := h
-                                       rewrite [rk] at notNotT
-                                       cases notNotT
+    | some ⟨ atom 1, k ⟩ => match em (k Γ Δ) with
+                            | Or.inl kW  => exact kW
+                            | Or.inr nkW => simp at h
+                                            rewrite [r] at h
+                                            have nnkW : ¬ (¬ (k Γ Δ)) := h
+                                            exact (False.elim (nnkW nkW))
     | some ⟨ atom 0, _ ⟩               => simp at bt; rewrite [r] at bt; cases bt
     | some ⟨ atom (succ (succ _)), _ ⟩ => simp at bt; rewrite [r] at bt; cases bt
     | some ⟨ sort.undef, _ ⟩           => simp at bt; rewrite [r] at bt; cases bt
@@ -235,3 +220,4 @@ theorem interpNotTerm: ∀ {Γ: Environment} {Δ: SEnvironment} {t: term},
     | some ⟨ sort.dep, _ ⟩             => simp at bt; rewrite [r] at bt; cases bt
     | none                             => simp at bt; rewrite [r] at bt; cases bt
 
+end Rules
