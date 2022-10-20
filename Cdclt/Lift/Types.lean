@@ -7,7 +7,7 @@ open term
 
 namespace Types
 
-def SEnvironment : Type 1 := Nat → (Σ (A : Type) , A)
+def SEnvironment : Type 1 := Nat → Σ (A : Type) , A
 
 def interpSort (Δ : SEnvironment) (s : sort) : Type :=
   match s with
@@ -17,9 +17,8 @@ def interpSort (Δ : SEnvironment) (s : sort) : Type :=
   | _ => Prop
 
 -- takes the number of a constant and it's type, and returns its value
-def Environment : Type 1 := Nat → (Δ : SEnvironment) → (s : sort) → interpSort Δ s
+def Environment (Δ : SEnvironment) := (s : sort) → Nat → interpSort Δ s
 
-def Interpretation: Type 1 := Option (Σ (s : sort), Environment → (Δ : SEnvironment) → interpSort Δ s)
+def Interpretation := Σ (s : sort), (Δ : SEnvironment) → Environment Δ → interpSort Δ s
 
 end Types
-
