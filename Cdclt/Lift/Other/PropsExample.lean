@@ -7,25 +7,25 @@ open rules
 
 def Interpretation: Type := Nat → Prop
 
-@[simp] def interpTerm (f : Interpretation) (t : term) : Prop :=
+@[simp] def evalTerm (I : Interpretation) (t : term) : Prop :=
   match t with
-  | term.const   i  _  => f i
-  | term.not     t₁    => Not $ interpTerm f t₁
-  | term.and     t₁ t₂ => And (interpTerm f t₁) (interpTerm f t₂)
-  | term.or      t₁ t₂ => Or (interpTerm f t₁) (interpTerm f t₂)
-  | term.implies t₁ t₂ => (interpTerm f t₁) -> (interpTerm f t₂)
-  | term.eq      t₁ t₂ => (interpTerm f t₁) = (interpTerm f t₂)
+  | term.const   i  _  => I i
+  | term.not     t₁    => Not (evalTerm I t₁)
+  | term.and     t₁ t₂ => And (evalTerm I t₁) (evalTerm I t₂)
+  | term.or      t₁ t₂ => Or (evalTerm I t₁) (evalTerm I t₂)
+  | term.implies t₁ t₂ => (evalTerm I t₁) -> (evalTerm I t₂)
+  | term.eq      t₁ t₂ => (evalTerm I t₁) = (evalTerm I t₂)
   | term.bot           => False
   | term.top           => True
   | _                  => False
 
 @[simp] def satisfies (I : Interpretation) (t : term) : Prop :=
-  interpTerm I t = True
+  evalTerm I t = True
 
-@[simp] def followsFrom (t₁ t₂ : term) : Prop :=
+@[simp] def impliesIn (t₁ t₂ : term) : Prop :=
   ∀ {I : Interpretation}, satisfies I t₁ → satisfies I t₂
 
-/- -- Boolean rules -/
+/- -- Used Lemmas -/
 
 theorem eqTrue {A : Prop} : A = True → A := fun ha => by rw [ha]; exact True.intro
 
@@ -42,11 +42,13 @@ theorem negNegElim {A : Prop} : ¬ ¬ A → A := by
   | inl c => exact fun _ => c
   | inr c => exact fun h => False.elim (h c)
 
+/- -- Boolean theorems -/
+
 theorem notImplies1' : ∀ {t₁ t₂ : term},
-    followsFrom (not (implies t₁ t₂)) t₁ := by
+    impliesIn (not (implies t₁ t₂)) t₁ := by
   intros t₁ t₂ I h
   simp at *
-  cases Classical.em (interpTerm I t₁) with
+  cases Classical.em (evalTerm I t₁) with
   | inl r => exact impliesEqTrue r
   | inr r => have h' := eqTrue h
              apply False.elim
@@ -55,18 +57,20 @@ theorem notImplies1' : ∀ {t₁ t₂ : term},
              apply False.elim
              exact r abs
 
+#check Classical.em
+
 theorem interpNotTerm: ∀ {I: Interpretation} {t: term},
-    interpTerm I (not t) = False → interpTerm I t = True := by
+    evalTerm I (not t) = False → evalTerm I t = True := by
   intros I t h
   simp at *
   apply impliesEqTrue
   exact negNegElim (eqFalse h)
 
 theorem notImplies2' : ∀ {t₁ t₂ : term},
-    followsFrom (not $ implies t₁ t₂) (not t₂) := by
+    impliesIn (not $ implies t₁ t₂) (not t₂) := by
   intros t₁ t₂ I h
   simp at *
-  cases Classical.em (interpTerm I t₂) with
+  cases Classical.em (evalTerm I t₂) with
   | inl r => have h' := eqTrue h
              apply False.elim
              apply h'
@@ -74,7 +78,7 @@ theorem notImplies2' : ∀ {t₁ t₂ : term},
   | inr r => exact impliesEqTrue r
 
 theorem impliesElim' : ∀ {t₁ t₂: term},
-    followsFrom (implies t₁ t₂) (or (not t₁) t₂) := by
+    impliesIn (implies t₁ t₂) (or (not t₁) t₂) := by
   intros t₁ t₂ I h
   simp at *
   apply propext
@@ -82,12 +86,12 @@ theorem impliesElim' : ∀ {t₁ t₂: term},
   { exact fun _ => True.intro }
   intro _
   have h' := eqTrue h
-  cases Classical.em (interpTerm I t₁) with
+  cases Classical.em (evalTerm I t₁) with
   | inl c => exact Or.inr (h' c)
   | inr c => exact Or.inl c
 
 theorem contradiction': ∀ {t: term},
-    followsFrom (and (not t) t) bot := by
+    impliesIn (and (not t) t) bot := by
   intros t I h
   simp at *
   have h' := eqTrue h
@@ -96,7 +100,7 @@ theorem contradiction': ∀ {t: term},
   exact hna ha
 
 theorem R1' : ∀ {t₁ t₂ : term},
-    followsFrom (and (or (not t₁) t₂) t₁) t₂ := by
+    impliesIn (and (or (not t₁) t₂) t₁) t₂ := by
   intros t₁ t₂ I h
   simp at *
   have h' := eqTrue h
@@ -120,7 +124,7 @@ def q: term := const 1001 boolSort
 def mpDE' := implies p (implies (implies p q) q)
 def notMpDE := (not mpDE')
 
-theorem th0' : followsFrom notMpDE bot :=
+theorem th0' : impliesIn notMpDE bot :=
   λ lean_a0 =>
     have lean_s0 := notImplies2' lean_a0
     have lean_s1 := notImplies1' lean_s0
@@ -131,20 +135,24 @@ theorem th0' : followsFrom notMpDE bot :=
     contradiction' (conjunction lean_s9 lean_s6)
 
 theorem followsBot : ∀ {t : term},
-    followsFrom t bot → ∀ {I : Interpretation}, interpTerm I t = False := by
+    impliesIn t bot → ∀ {I : Interpretation}, evalTerm I t = False := by
   intros t h I
   simp at *
   have h' := @h I
-  cases Classical.em (interpTerm I t) with
+  cases Classical.em (evalTerm I t) with
   | inl c => exact False.elim (h' (impliesEqTrue c))
   | inr c => exact impliesEqFalse c
 
-theorem notMpDEFalse: ∀ {f: Interpretation}, interpTerm f notMpDE = False :=
+theorem notMpDEFalse: ∀ {f: Interpretation}, evalTerm f notMpDE = False :=
   followsBot th0'
-theorem mpDETrue: ∀ {f: Interpretation}, interpTerm f mpDE' = True :=
+theorem mpDETrue: ∀ {f: Interpretation}, evalTerm f mpDE' = True :=
   interpNotTerm notMpDEFalse
 
-def modusPonens' (P Q: Prop) := P → (P → Q) → Q
+def modusPonens (P Q: Prop) := P → (P → Q) → Q
 
-theorem mp: ∀ {P Q: Prop}, (modusPonens' P Q) = True
+theorem mpEqTrue: ∀ {P Q: Prop}, (modusPonens P Q) = True
   | P, Q => @mpDETrue fun n => if n == 1000 then P else Q
+
+theorem mpCorrect: ∀ {P Q: Prop}, modusPonens P Q :=
+  eqTrue mpEqTrue
+
