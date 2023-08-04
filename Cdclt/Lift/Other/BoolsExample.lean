@@ -186,6 +186,12 @@ theorem followsBot : ∀ {t : term},
                by simp at h'
     | false => rfl
 
+theorem notFollowsBot: ∀ {t: term},
+  followsFrom (not t) bot → ∀ {f: Interpretation}, interpTerm f t = true
+  | t, h, f => by
+    have hh := @followsBot (not t) h f
+    exact interpNotTerm hh
+
 theorem notMpDEFalse: ∀ {f: Interpretation}, interpTerm f notMpDE = false :=
   followsBot th0'
 theorem mpDETrue: ∀ {f: Interpretation}, interpTerm f mpDE' = true :=

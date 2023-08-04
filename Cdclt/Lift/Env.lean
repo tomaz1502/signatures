@@ -22,6 +22,5 @@ def defaultValue (Δ : SEnvironment) (s : sort) : interpSort Δ s :=
   | sort.bv _ => False
   | sort.dep => False
 
-def defaultEnvironment: Environment defaultSEnvironment :=
-  λ s _ => defaultValue defaultSEnvironment s
+def defaultEnvironment: Environment := λ _ Δ s => defaultValue Δ s
 

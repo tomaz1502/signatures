@@ -22,10 +22,10 @@ def Interpretation: Type := Nat → Prop
 @[simp] def satisfies (I : Interpretation) (t : term) : Prop :=
   evalTerm I t = True
 
-@[simp] def impliesIn (t₁ t₂ : term) : Prop :=
+@[simp] def followsFrom (t₁ t₂ : term) : Prop :=
   ∀ {I : Interpretation}, satisfies I t₁ → satisfies I t₂
 
-/- -- Used Lemmas -/
+/- -- Boolean rules -/
 
 theorem eqTrue {A : Prop} : A = True → A := fun ha => by rw [ha]; exact True.intro
 
@@ -42,10 +42,8 @@ theorem negNegElim {A : Prop} : ¬ ¬ A → A := by
   | inl c => exact fun _ => c
   | inr c => exact fun h => False.elim (h c)
 
-/- -- Boolean theorems -/
-
 theorem notImplies1' : ∀ {t₁ t₂ : term},
-    impliesIn (not (implies t₁ t₂)) t₁ := by
+    followsFrom (not (implies t₁ t₂)) t₁ := by
   intros t₁ t₂ I h
   simp at *
   cases Classical.em (evalTerm I t₁) with
@@ -57,8 +55,17 @@ theorem notImplies1' : ∀ {t₁ t₂ : term},
              apply False.elim
              exact r abs
 
+#check Classical.em
+
+theorem interpNotTerm: ∀ {I: Interpretation} {t: term},
+    evalTerm I (not t) = False → evalTerm I t = True := by
+  intros I t h
+  simp at *
+  apply impliesEqTrue
+  exact negNegElim (eqFalse h)
+
 theorem notImplies2' : ∀ {t₁ t₂ : term},
-    impliesIn (not $ implies t₁ t₂) (not t₂) := by
+    followsFrom (not $ implies t₁ t₂) (not t₂) := by
   intros t₁ t₂ I h
   simp at *
   cases Classical.em (evalTerm I t₂) with
@@ -69,7 +76,7 @@ theorem notImplies2' : ∀ {t₁ t₂ : term},
   | inr r => exact impliesEqTrue r
 
 theorem impliesElim' : ∀ {t₁ t₂: term},
-    impliesIn (implies t₁ t₂) (or (not t₁) t₂) := by
+    followsFrom (implies t₁ t₂) (or (not t₁) t₂) := by
   intros t₁ t₂ I h
   simp at *
   apply propext
@@ -82,7 +89,7 @@ theorem impliesElim' : ∀ {t₁ t₂: term},
   | inr c => exact Or.inl c
 
 theorem contradiction': ∀ {t: term},
-    impliesIn (and (not t) t) bot := by
+    followsFrom (and (not t) t) bot := by
   intros t I h
   simp at *
   have h' := eqTrue h
@@ -91,7 +98,7 @@ theorem contradiction': ∀ {t: term},
   exact hna ha
 
 theorem R1' : ∀ {t₁ t₂ : term},
-    impliesIn (and (or (not t₁) t₂) t₁) t₂ := by
+    followsFrom (and (or (not t₁) t₂) t₁) t₂ := by
   intros t₁ t₂ I h
   simp at *
   have h' := eqTrue h
@@ -108,39 +115,14 @@ theorem conjunction: ∀ {t₁ t₂ : term} {I : Interpretation},
   apply impliesEqTrue
   exact And.intro (eqTrue h₁) (eqTrue h₂)
 
-/- -- Auxiliary Theorems -/
-
-theorem evalNotTerm: ∀ {I: Interpretation} {t: term},
-    evalTerm I (not t) = False → evalTerm I t = True := by
-  intros I t h
-  simp at *
-  apply impliesEqTrue
-  exact negNegElim (eqFalse h)
-
-theorem impliesInBot : ∀ {t : term},
-    impliesIn t bot → ∀ {I : Interpretation}, evalTerm I t = False := by
-  intros t h I
-  simp at *
-  have h' := @h I
-  cases Classical.em (evalTerm I t) with
-  | inl c => exact False.elim (h' (impliesEqTrue c))
-  | inr c => exact impliesEqFalse c
-
-theorem notImpliesInBot : ∀ {t : term},
-    impliesIn (not t) bot → ∀ {I : Interpretation}, evalTerm I t = True := by
-  intros t h I
-  have h₁ := @impliesInBot (not t) h
-  have h₁' := @h₁ I
-  exact @evalNotTerm I t h₁'
-
-/- -- Example -/
+/- -- Examples -/
 
 def p: term := const 1000 boolSort
 def q: term := const 1001 boolSort
-def modusPonenesEmbed := implies p (implies (implies p q) q)
-def notModusPonensEmbed := not modusPonenesEmbed
+def mpDE' := implies p (implies (implies p q) q)
+def notMpDE := (not mpDE')
 
-theorem th0 : impliesIn notModusPonensEmbed bot :=
+theorem th0' : followsFrom notMpDE bot :=
   λ lean_a0 =>
     have lean_s0 := notImplies2' lean_a0
     have lean_s1 := notImplies1' lean_s0
@@ -150,15 +132,21 @@ theorem th0 : impliesIn notModusPonensEmbed bot :=
     have lean_s9 := notImplies2' lean_s0
     contradiction' (conjunction lean_s9 lean_s6)
 
-theorem modusPonensEqTrue: ∀ {I: Interpretation},
-    evalTerm I modusPonenesEmbed = True :=
-  notImpliesInBot th0
+theorem followsBot : ∀ {t : term},
+    followsFrom t bot → ∀ {I : Interpretation}, evalTerm I t = False := by
+  intros t h I
+  simp at *
+  have h' := @h I
+  cases Classical.em (evalTerm I t) with
+  | inl c => exact False.elim (h' (impliesEqTrue c))
+  | inr c => exact impliesEqFalse c
 
-def modusPonens (P Q : Prop) : Prop := P → (P → Q) → Q
+theorem notMpDEFalse: ∀ {f: Interpretation}, evalTerm f notMpDE = False :=
+  followsBot th0'
+theorem mpDETrue: ∀ {f: Interpretation}, evalTerm f mpDE' = True :=
+  interpNotTerm notMpDEFalse
 
-theorem modusPonensCorrect: ∀ (P Q: Prop), (modusPonens P Q) = True := by
-  intros P Q
-  exact @modusPonensEqTrue (fun id => if id == 1000 then P else Q)
+def modusPonens' (P Q: Prop) := P → (P → Q) → Q
 
--- theorem mpCorrect: ∀ {P Q: Prop}, modusPonens P Q :=
---   eqTrue modusPonensEqTrue
+theorem mp: ∀ {P Q: Prop}, (modusPonens' P Q) = True
+  | P, Q => @mpDETrue fun n => if n == 1000 then P else Q
